@@ -206,8 +206,8 @@ const handleMouseLeave= ()=>{
 }
     
   return (
-    <>
-      <MapProvider>
+    <div >
+      <MapProvider  >
     
         <Map
         ref={refMap}
@@ -230,12 +230,14 @@ const handleMouseLeave= ()=>{
           
         >
           <Source id="stadium" type="geojson" data={geodata}>
+            
             <Layer
               id="tribune"
               {...{
                 filter: ["==", "type", "tribune"],
                 type: "fill",
                 paint: {
+                    
                     // the fill color will be depends on switch case 
                   "fill-color":  
                   [
@@ -257,6 +259,7 @@ const handleMouseLeave= ()=>{
                 paint: {
                   "line-color": ["get", "stroke"],
                   "line-width": ["get", "stroke-width"],
+
                 },
               }}
             />
@@ -270,6 +273,13 @@ const handleMouseLeave= ()=>{
                   "fill-opacity": ["get", "fill-opacity"],
                 },
               }}
+            />
+
+            <Layer beforeId="stadium-fill" 
+                type="background"
+                paint={{
+                    "background-color": "#EDEFF5"
+                }}
             />
           </Source>
           {popupInfo && (
@@ -285,11 +295,12 @@ const handleMouseLeave= ()=>{
             </div>
           </Popup>
         )}
+        
         </Map>
         <Navigation cameraPosition={cameraPosition} />
         <Inspector features={currFeatures} />
         
       </MapProvider>
-    </>
+    </div>
   );
 }
