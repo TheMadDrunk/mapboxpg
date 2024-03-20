@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabaseClient } from "./createClient";
 import Map, { Layer, Source, useMap, MapProvider } from "react-map-gl/maplibre";
-import { MapLayerMouseEvent } from "maplibre-gl";
-import { Popup } from "react-map-gl";
+import {  MapLayerMouseEvent } from "maplibre-gl";
+import {  Popup } from "react-map-gl";
 
 const camDefault = {
   center: [-121.968438, 37.371627],
@@ -16,6 +16,7 @@ export default function SeatPicker() {
   const { eventId } = useParams<any>();
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   const [popupInfo, setPopupInfo] = useState(null);
+  const [selectedFeature, setSelectedFeature] = useState<any>();
   const [geodata, setGeoData] = useState<any>({
     type: "FeatureCollection",
     features: [
@@ -37,10 +38,32 @@ export default function SeatPicker() {
   }
 
   const [currFeatures, setFeatures] = useState<any>();
-
+  const refMap = React.useRef(null);
   useEffect(() => {
+
     fetchVenue();
   }, []);
+
+  const resetHoverFeature = (feature) => {
+    if (!selectedFeature) {
+        return;
+    }
+    refMap.current.setFeatureState({
+        source: "stadium",
+        id: feature.id,
+    }, { hover: false });
+
+  }
+  const activeHoverFeature = (feature) => {
+    if (!feature) {
+        return;
+    }
+    refMap.current.setFeatureState({
+        source: "stadium",
+        id: feature.id,
+    }, { hover: true });
+
+  }
 
   const fetchSeats = async (tribuneId: any) => {
     if (!tribuneId) {
@@ -62,7 +85,8 @@ export default function SeatPicker() {
     });
   };
 
-  const handleClick = (ev: MapLayerMouseEvent) => {
+  const handleClick = (ev:MapLayerMouseEvent ) => {
+   
     if (ev.features?.length == 0) {
       return;
     }
@@ -74,6 +98,9 @@ export default function SeatPicker() {
       duration: 3000,
     });
     if (!ev.features) return;
+    console.log("click", ev.features[0]);
+
+   
     const id = ev.features[0].properties.tribuneId;
     fetchSeats(id);
   };
@@ -113,6 +140,7 @@ export default function SeatPicker() {
               onClick={() => {
                 setCamPos(camDefault);
                 setFeatures(undefined);
+                handleMouseLeave();
               }}
               className="inline-flex mt-6 items-center w-40 px-3 py-2 text-sm font-medium text-center text-white bg-amber-500 rounded-lg hover:bg-amber-600 focus:ring-4 focus:outline-none focus:ring-blue-300"
             >
@@ -139,37 +167,66 @@ export default function SeatPicker() {
     );
   }
   const handleMouseHover = useCallback((event:MapLayerMouseEvent)=>{
+    
     if (!event.features) {
-      setHoverInfo(null);
-      return;
+        return;
     }
-   setPopupInfo({
-        longitude: event.lngLat.lng,
-        latitude: event.lngLat.lat,
-        properties: event.features[0].properties,
-   });
-  
-    console.log("event", event);
-    console.log("features event", event.features[0]);
+    if (event.features?.length == 0) {
+        return;
+    }
+    console.log("hover", event.features[0]);
+    setPopupInfo({
+            longitude: event.lngLat.lng,
+            latitude: event.lngLat.lat,
+            properties: event.features[0].properties,
+    });
+    
   
     }, []);
+const handleMouseEnter= (event:MapLayerMouseEvent)=>{
+    if (!event.features) {
+        return;
+    }
+    if (event.features?.length == 0) {
+        return;
+    }
+    console.log("prev ",selectedFeature);
+    console.log("enter", event.features[0]);
+
+    resetHoverFeature(selectedFeature);
+
+    activeHoverFeature(event.features[0]);
+    setSelectedFeature(event.features[0]);
+}
+    
+const handleMouseLeave= ()=>{
+    
+    resetHoverFeature(selectedFeature);
+    
+}
     
   return (
     <>
       <MapProvider>
+    
         <Map
+        ref={refMap}
           id="currmap"
           initialViewState={{
             longitude: -121.96,
             latitude: 37.35,
             zoom: 15,
+            
           }}
+          
           style={{ width: "100wh", height: "100vh" }}
           interactive={true}
           interactiveLayerIds={["tribune"]}
           onMouseMove={handleMouseHover}
-          
           onMouseDown={handleClick}
+          onClick={handleMouseEnter}
+          onBoxZoomCancel={handleMouseLeave}
+          
         >
           <Source id="stadium" type="geojson" data={geodata}>
             <Layer
@@ -178,10 +235,19 @@ export default function SeatPicker() {
                 filter: ["==", "type", "tribune"],
                 type: "fill",
                 paint: {
-                  "fill-color": "#e7e6e8",
+                    // the fill color will be depends on switch case 
+                  "fill-color":  
+                  [
+                    'case',
+                    ['boolean', ['feature-state', 'hover'], false],
+                    "#B2FFD1",
+                    "#e7e6e8"
+                  ], 
+                 
                 },
               }}
             />
+            
             <Layer
               beforeId="tribune"
               id="stadium-line"
@@ -213,13 +279,8 @@ export default function SeatPicker() {
             onClose={() => setPopupInfo(null)}
           >
             <div>
-              {popupInfo.properties.type}, |{' '}
-              <a
-                target="_new"
-                
-              >
-                Wikipedia
-              </a>
+              {popupInfo.properties.tribuneId} {' '}
+            
             </div>
           </Popup>
         )}
