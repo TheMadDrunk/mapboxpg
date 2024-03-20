@@ -219,7 +219,8 @@ const handleMouseLeave= ()=>{
             
           }}
           
-          style={{ width: "100wh", height: "100vh" }}
+          style={{ width: "100wh", height: "100vh",backgroundColor:"EDEFF5" }}
+          
           interactive={true}
           interactiveLayerIds={["tribune"]}
           onMouseMove={handleMouseHover}

@@ -22,7 +22,7 @@ const router = createBrowserRouter([
 export default function App() {
 
 	return (
-		<div className="container max-w-2xl mx-auto">
+		<div className="container mx-auto "   >
 			<RouterProvider router={router}/>
 		</div>
 	);
