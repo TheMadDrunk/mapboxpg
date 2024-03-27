@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabaseClient } from "./createClient";
 import Map, { Layer, Source, useMap, MapProvider } from "react-map-gl/maplibre";
-import {  MapLayerMouseEvent } from "maplibre-gl";
-import {  Popup } from "react-map-gl";
-
+import { MapLayerMouseEvent } from "maplibre-gl";
+import { Popup } from "react-map-gl";
+import stadJson from "./adrar.json";
 const camDefault = {
   center: [-121.968438, 37.371627],
   zoom: 15,
@@ -36,35 +36,43 @@ export default function SeatPicker() {
     if (!data) return;
     setGeoData(data[0].venue_geojson);
   }
+  async function fetchVenueAdrar() {
+    const data = stadJson;
+    setGeoData(data);
+  }
 
   const [currFeatures, setFeatures] = useState<any>();
   const refMap = React.useRef(null);
   useEffect(() => {
-
-    fetchVenue();
+    // fetchVenue();
+    fetchVenueAdrar();
   }, []);
 
   const resetHoverFeature = (feature) => {
     if (!selectedFeature) {
-        return;
+      return;
     }
-    refMap.current.setFeatureState({
+    refMap.current.setFeatureState(
+      {
         source: "stadium",
         id: feature.id,
-    }, { hover: false });
-
-  }
+      },
+      { hover: false }
+    );
+  };
   const activeHoverFeature = (feature) => {
     if (!feature) {
-        return;
+      return;
     }
-    refMap.current.setFeatureState({
+    refMap.current.setFeatureState(
+      {
         source: "stadium",
         id: feature.id,
-    }, { hover: true });
-
-  }
-
+      },
+      { hover: true }
+    );
+  };
+  /*
   const fetchSeats = async (tribuneId: any) => {
     if (!tribuneId) {
       return;
@@ -83,10 +91,9 @@ export default function SeatPicker() {
       available_seats: data[0].available_seats,
       price: data[0].price,
     });
-  };
+  };*/
 
-  const handleClick = (ev:MapLayerMouseEvent ) => {
-   
+  const handleClick = (ev: MapLayerMouseEvent) => {
     if (ev.features?.length == 0) {
       return;
     }
@@ -100,7 +107,6 @@ export default function SeatPicker() {
     if (!ev.features) return;
     console.log("click", ev.features[0]);
 
-   
     const id = ev.features[0].properties.tribuneId;
     fetchSeats(id);
   };
@@ -166,47 +172,43 @@ export default function SeatPicker() {
       </div>
     );
   }
-  const handleMouseHover = useCallback((event:MapLayerMouseEvent)=>{
-    
+  const handleMouseHover = useCallback((event: MapLayerMouseEvent) => {
     if (!event.features) {
-        return;
+      return;
     }
     if (event.features?.length == 0) {
-        return;
+      return;
     }
     console.log("hover", event.features[0]);
     setPopupInfo({
-            longitude: event.lngLat.lng,
-            latitude: event.lngLat.lat,
-            properties: event.features[0].properties,
+      longitude: event.lngLat.lng,
+      latitude: event.lngLat.lat,
+      properties: event.features[0].properties,
     });
-    
-  
-    }, []);
-const handleMouseEnter= (event:MapLayerMouseEvent)=>{
+  }, []);
+  const handleMouseEnter = (event: MapLayerMouseEvent) => {
     if (!event.features) {
-        return;
+      return;
     }
     if (event.features?.length == 0) {
-        return;
+      return;
     }
-    console.log("prev ",selectedFeature);
+    console.log("prev ", selectedFeature);
     console.log("enter", event.features[0]);
 
     resetHoverFeature(selectedFeature);
 
     activeHoverFeature(event.features[0]);
     setSelectedFeature(event.features[0]);
-}
-    
-const handleMouseLeave= ()=>{
-    
+  };
+
+  const handleMouseLeave = () => {
     resetHoverFeature(selectedFeature);
-    
-}
-    
+    setHoverInfo(null);
+  };
+
   return (
-    <div >
+    /*  <div >
       <MapProvider  >
     
         <Map
@@ -300,6 +302,226 @@ const handleMouseLeave= ()=>{
         <Navigation cameraPosition={cameraPosition} />
         <Inspector features={currFeatures} />
         
+      </MapProvider>
+    </div>*/
+
+    <div>
+      <MapProvider>
+        <Map
+          ref={refMap}
+          id="currmap"
+          initialViewState={{
+            longitude: -121.96,
+            latitude: 37.35,
+            zoom: 15,
+          }}
+          mapStyle=
+            'https://api.maptiler.com/maps/streets/style.json?key=iiFeGmvBxqCn4UG9a3K0'
+           style={{ width: "100wh", height: "100vh", backgroundColor: "EDEFF5" }}
+          interactive={true}
+          interactiveLayerIds={["tribune"]}
+          onMouseMove={handleMouseHover}
+          onMouseDown={handleClick}
+          onClick={handleMouseEnter}
+          onBoxZoomCancel={handleMouseLeave}
+        >
+          <Source id="stadium"  type="geojson" data={geodata}>
+            <Layer
+              id="symbol-layer"
+              {...{
+                type: 'symbol',
+                    source: 'stadium',
+                    layout: {
+
+                        "text-field":  ["concat", 'z', ['get', 'tribuneId'] ] ,
+                        "text-font": [
+                            'Poppins',
+                            'Arial Unicode MS Bold'
+                        ],
+                        "text-size": 12,
+                        "text-transform": 'uppercase',
+                        "text-letter-spacing": 0.05,
+                        "text-offset": [0, 1.5]
+                    },
+                    paint: {
+                        "text-color":"#4D4D4D" ,
+                        "text-halo-color": '#fff',
+                        "text-halo-width": 2
+                    },
+                    filter: ['==', 'type', 'tribune']
+              }}
+            />
+            <Layer beforeId="symbol-layer"  
+              id="seat"
+              {...{
+                filter: ["==", "type", "seat"],
+                type: "fill",
+                paint: {
+                  "fill-color": [
+                    "case",
+                    ["==", ["get", "isAvailable"], 1],
+                    "#A9A9A9",
+                    ["==", ["get", "isAvailable"], 0],
+                    "#3A9012",
+                    "#A9A9A9",
+                  ],
+                },
+              }}
+            />
+
+            <Layer
+              beforeId="seat"
+              id="seat-line"
+              {...{
+                filter: ["==", "type", "seat"],
+                type: "line",
+                paint: {
+                  "line-color": "#FFFFFF",
+                  "line-width": 4,
+                },
+              }}
+            />
+            <Layer
+              beforeId="seat-line"
+              id="tribune"
+              {...{
+                filter: ["==", "type", "tribune"],
+                type: "fill",
+                paint: {
+                  // the fill color will be depends on switch case
+                  "fill-color": [
+                    "case",
+                    ["boolean", ["feature-state", "hover"], false],
+                    "#B2FFD1",
+                    "#e7e6e8",
+                  ],
+                },
+              }}
+            />
+
+            <Layer
+              beforeId="tribune"
+              id="tribune-line"
+              {...{
+                filter: ["==", "type", "tribune"],
+                type: "line",
+                paint: {
+                  "line-color": "#AFAEB0",
+                  "line-width": 2,
+                },
+              }}
+            />
+
+            <Layer
+              beforeId="tribune-line"
+              id="stadium-outline"
+              {...{
+                filter: ["==", "type", "stadium-outline"],
+                type: "line",
+
+                paint: {
+                  "line-color": "#FFFFFF",
+                  "line-width": 2,
+                },
+              }}
+            />
+            <Layer
+              beforeId="stadium-outline"
+              id="field"
+              {...{
+                filter: [
+                  "in",
+                  "type",
+                  "stadium-field-light",
+                  "stadium-field-dark",
+                ],
+                type: "fill",
+                paint: {
+                  // the fill color will be depends on switch case
+                  "fill-color": [
+                    "case",
+                    ["==", ["get", "type"], "stadium-field-light"],
+                    "#78924A",
+                    ["==", ["get", "type"], "stadium-field-dark"],
+                    "#5F783A",
+                    "#A9A9A9",
+                  ],
+                },
+              }}
+            />
+
+            <Layer
+              beforeId="field"
+              id="stadium-base"
+              {...{
+                filter: ["==", "type", "stadium-base"],
+                type: "fill",
+                paint: {
+                  // the fill color will be depends on switch case
+                  "fill-color": "#E7E6E8",
+                  "fill-opacity": 0.5,
+                },
+              }}
+            />
+            <Layer
+              beforeId="stadium-base"
+              id="stadium-base-line"
+              {...{
+                filter: ["==", "type", "stadium-base"],
+                type: "line",
+
+                paint: {
+                  "line-color": "#AFAEB0",
+                  "line-width": 2,
+                },
+              }}
+            />
+            <Layer
+              beforeId="stadium-base-line"
+              id="bg-stadium"
+              {...{
+                filter: ["==", "type", "bg-stadium"],
+                type: "fill",
+                paint: {
+                  "fill-color": "#FFFFFF",
+                },
+              }}
+            />
+            <Layer
+              beforeId="bg-stadium"
+              id="bg-stadium-line"
+              {...{
+                filter: ["==", "type", "bg-stadium"],
+                type: "line",
+
+                paint: {
+                  "line-color": "#AFAEB0",
+                  "line-width":10 ,
+                },
+              }}
+            />
+
+            <Layer
+              beforeId="bg-stadium-line"
+              type="background"
+              paint={{
+                "background-color": "#EDEFF5",
+              }}
+            />
+          </Source>
+          {popupInfo && (
+            <Popup
+              anchor="top"
+              longitude={Number(popupInfo.longitude)}
+              latitude={Number(popupInfo.latitude)}
+              onClose={() => setPopupInfo(null)}
+            >
+              <div>{popupInfo.properties.tribuneId} </div>
+            </Popup>
+          )}
+        </Map>
+        <Navigation cameraPosition={cameraPosition} />
+        <Inspector features={currFeatures} />
       </MapProvider>
     </div>
   );
